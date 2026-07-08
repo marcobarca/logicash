@@ -13,6 +13,8 @@ import '../core/database/models/import_profile_model.dart';
 import '../core/import/flexible_parser.dart';
 import '../core/api_keys/api_key_store.dart';
 import '../core/api_keys/api_key_model.dart';
+import '../core/database/models/import_batch_model.dart';
+import 'package:path/path.dart' as p;
 
 class AppProvider extends ChangeNotifier {
   final DbHelper _db = DbHelper();
@@ -92,6 +94,9 @@ class AppProvider extends ChangeNotifier {
   List<ApiKeyEntry> _customApiKeys = [];
   List<ApiKeyEntry> get customApiKeys => _customApiKeys;
 
+  List<ImportBatch> _importBatches = [];
+  List<ImportBatch> get importBatches => _importBatches;
+
   List<ImportProfile> _importProfiles = [];
   List<ImportProfile> get importProfiles => _importProfiles;
 
@@ -133,6 +138,7 @@ class AppProvider extends ChangeNotifier {
       _loadFixedExpenses(),
       _loadAccounts(),
       _loadImportProfiles(),
+      _loadImportBatches(),
     ]);
 
     _isLoading = false;
@@ -173,6 +179,10 @@ class AppProvider extends ChangeNotifier {
     _importProfiles = await _db.getImportProfiles();
   }
 
+  Future<void> _loadImportBatches() async {
+    _importBatches = await _db.getImportBatches();
+  }
+
   // ── Import ────────────────────────────────────────────────────
 
   Future<ImportResult> importFile(String filePath) async {
@@ -181,7 +191,12 @@ class AppProvider extends ChangeNotifier {
 
     try {
       final transactions = await Future(() => ExcelParser.parse(filePath));
-      final result = await _db.insertTransactions(transactions);
+      final batchId = await _db.createImportBatch(
+        fileName: p.basename(filePath),
+        profileName: 'Intesa Sanpaolo',
+        recordCount: transactions.length,
+      );
+      final result = await _db.insertTransactions(transactions, batchId: batchId);
 
       _lastImportMessage = '${result.added} nuovi movimenti aggiunti, ${result.duplicates} già presenti';
 
@@ -204,7 +219,12 @@ class AppProvider extends ChangeNotifier {
 
     try {
       final transactions = await Future(() => FlexibleParser.parse(filePath, profile));
-      final result = await _db.insertTransactions(transactions);
+      final batchId = await _db.createImportBatch(
+        fileName: p.basename(filePath),
+        profileName: profile.name,
+        recordCount: transactions.length,
+      );
+      final result = await _db.insertTransactions(transactions, batchId: batchId);
 
       _lastImportMessage = '${result.added} nuovi movimenti aggiunti, ${result.duplicates} già presenti';
 
@@ -329,8 +349,8 @@ class AppProvider extends ChangeNotifier {
     // Trend risparmio (20 pt)
     if (_monthlySummaries.length >= 2) {
       final lastTwo = _monthlySummaries.reversed.take(2).toList();
-      if (lastTwo[0].savings > lastTwo[1].savings) score += 20;
-      else if (lastTwo[0].savings > 0) score += 10;
+      if (lastTwo[0].savings > lastTwo[1].savings) { score += 20; }
+      else if (lastTwo[0].savings > 0) { score += 10; }
     } else {
       score += 10;
     }
@@ -544,6 +564,11 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> updateTransaction(TransactionModel tx) async {
     await _db.updateTransaction(tx);
+    await refresh();
+  }
+
+  Future<void> deleteImportBatch(int id) async {
+    await _db.deleteImportBatch(id);
     await refresh();
   }
 

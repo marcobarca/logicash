@@ -69,6 +69,7 @@ class _ExpensesScreenState extends State<ExpensesScreen>
   void _showPicker(BuildContext context, List<String> months, int startDay) {
     showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -437,6 +438,7 @@ class _MovimentiTabState extends State<_MovimentiTab> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),

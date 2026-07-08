@@ -5,6 +5,7 @@ import 'models/goal_model.dart';
 import 'models/fixed_expense_model.dart';
 import 'models/account_model.dart';
 import 'models/import_profile_model.dart';
+import 'models/import_batch_model.dart';
 
 class DbHelper {
   static final DbHelper _instance = DbHelper._internal();
@@ -20,7 +21,7 @@ class DbHelper {
 
   Future<Database> _initDb() async {
     final path = join(await getDatabasesPath(), 'logicash.db');
-    return openDatabase(path, version: 3, onCreate: _onCreate, onUpgrade: _onUpgrade);
+    return openDatabase(path, version: 4, onCreate: _onCreate, onUpgrade: _onUpgrade);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -36,10 +37,23 @@ class DbHelper {
     }
     if (oldVersion < 3) {
       await db.execute(_importProfilesSchema);
-      // Inserisce il profilo Intesa Sanpaolo predefinito
       await db.insert('import_profiles', ImportProfile.intesaSanpaolo.toMap());
     }
+    if (oldVersion < 4) {
+      await db.execute(_importBatchesSchema);
+      await db.execute('ALTER TABLE transactions ADD COLUMN import_batch_id INTEGER');
+    }
   }
+
+  static const _importBatchesSchema = '''
+    CREATE TABLE IF NOT EXISTS import_batches (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      file_name    TEXT NOT NULL,
+      profile_name TEXT,
+      imported_at  TEXT NOT NULL,
+      record_count INTEGER NOT NULL DEFAULT 0
+    )
+  ''';
 
   static const _importProfilesSchema = '''
     CREATE TABLE IF NOT EXISTS import_profiles (
@@ -127,6 +141,7 @@ class DbHelper {
       )
     ''');
 
+    await db.execute(_importBatchesSchema);
     await db.execute(_importProfilesSchema);
     await db.insert('import_profiles', ImportProfile.intesaSanpaolo.toMap());
     await db.execute('CREATE INDEX idx_tx_year_month ON transactions(year_month)');
@@ -136,7 +151,10 @@ class DbHelper {
 
   // ── Transactions ──────────────────────────────────────────────
 
-  Future<ImportResult> insertTransactions(List<TransactionModel> txs) async {
+  Future<ImportResult> insertTransactions(
+    List<TransactionModel> txs, {
+    int? batchId,
+  }) async {
     final database = await db;
     int added = 0;
     int duplicates = 0;
@@ -145,7 +163,9 @@ class DbHelper {
       for (final tx in txs) {
         final existing = await txn.query('transactions', where: 'id = ?', whereArgs: [tx.id], limit: 1);
         if (existing.isEmpty) {
-          await txn.insert('transactions', tx.toMap());
+          final map = tx.toMap();
+          if (batchId != null) map['import_batch_id'] = batchId;
+          await txn.insert('transactions', map);
           added++;
         } else {
           duplicates++;
@@ -154,6 +174,36 @@ class DbHelper {
     });
 
     return ImportResult(added: added, duplicates: duplicates);
+  }
+
+  // ── Import batches ────────────────────────────────────────────
+
+  Future<int> createImportBatch({
+    required String fileName,
+    String? profileName,
+    required int recordCount,
+  }) async {
+    final database = await db;
+    return database.insert('import_batches', {
+      'file_name': fileName,
+      'profile_name': profileName,
+      'imported_at': DateTime.now().toIso8601String(),
+      'record_count': recordCount,
+    });
+  }
+
+  Future<List<ImportBatch>> getImportBatches() async {
+    final database = await db;
+    final rows = await database.query('import_batches', orderBy: 'imported_at DESC');
+    return rows.map(ImportBatch.fromMap).toList();
+  }
+
+  Future<void> deleteImportBatch(int id) async {
+    final database = await db;
+    await database.transaction((txn) async {
+      await txn.delete('transactions', where: 'import_batch_id = ?', whereArgs: [id]);
+      await txn.delete('import_batches', where: 'id = ?', whereArgs: [id]);
+    });
   }
 
   Future<void> deleteTransaction(String id) async {

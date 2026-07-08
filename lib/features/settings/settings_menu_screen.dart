@@ -9,6 +9,7 @@ import 'settings_ai_screen.dart';
 import 'settings_import_screen.dart';
 import 'settings_api_keys_screen.dart';
 import 'settings_help_screen.dart';
+import 'settings_import_history_screen.dart';
 
 class SettingsMenuScreen extends StatefulWidget {
   const SettingsMenuScreen({super.key});
@@ -101,6 +102,16 @@ class _SettingsMenuScreenState extends State<SettingsMenuScreen> {
                     ? 'Nessun profilo salvato'
                     : '${provider.importProfiles.length} profili',
                 onTap: () => _push(const SettingsImportScreen()),
+              ),
+              const _Divider(),
+              _Item(
+                icon: Icons.history_rounded,
+                color: AppColors.textMuted,
+                title: 'Storico importazioni',
+                subtitle: provider.importBatches.isEmpty
+                    ? 'Nessuna importazione'
+                    : '${provider.importBatches.length} file importati',
+                onTap: () => _push(const SettingsImportHistoryScreen()),
               ),
               const _Divider(),
               _Item(

@@ -112,6 +112,7 @@ class _MainShellState extends State<MainShell> {
         context: context,
         backgroundColor: AppColors.surface,
         isScrollControlled: true,
+      useSafeArea: true,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         builder: (_) => UpdateDialog(info: info),

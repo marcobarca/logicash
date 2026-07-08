@@ -201,6 +201,7 @@ class _InsightTile extends StatelessWidget {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      useSafeArea: true,
       builder: (_) => _InsightDetailSheet(insight: insight),
     );
   }
