@@ -21,7 +21,7 @@ class DbHelper {
 
   Future<Database> _initDb() async {
     final path = join(await getDatabasesPath(), 'logicash.db');
-    return openDatabase(path, version: 4, onCreate: _onCreate, onUpgrade: _onUpgrade);
+    return openDatabase(path, version: 5, onCreate: _onCreate, onUpgrade: _onUpgrade);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -42,6 +42,19 @@ class DbHelper {
     if (oldVersion < 4) {
       await db.execute(_importBatchesSchema);
       await db.execute('ALTER TABLE transactions ADD COLUMN import_batch_id INTEGER');
+    }
+    if (oldVersion < 5) {
+      final cols = await db.rawQuery('PRAGMA table_info(transactions)');
+      final hasCol = cols.any((c) => c['name'] == 'import_batch_id');
+      if (!hasCol) {
+        await db.execute('ALTER TABLE transactions ADD COLUMN import_batch_id INTEGER');
+      }
+      final batchesExists = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='import_batches'",
+      );
+      if (batchesExists.isEmpty) {
+        await db.execute(_importBatchesSchema);
+      }
     }
   }
 
@@ -78,15 +91,16 @@ class DbHelper {
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
       CREATE TABLE transactions (
-        id          TEXT PRIMARY KEY,
-        date        TEXT NOT NULL,
-        year_month  TEXT NOT NULL,
-        operation   TEXT,
-        details     TEXT,
-        account     TEXT,
-        category    TEXT,
-        currency    TEXT DEFAULT 'EUR',
-        amount      REAL NOT NULL
+        id               TEXT PRIMARY KEY,
+        date             TEXT NOT NULL,
+        year_month       TEXT NOT NULL,
+        operation        TEXT,
+        details          TEXT,
+        account          TEXT,
+        category         TEXT,
+        currency         TEXT DEFAULT 'EUR',
+        amount           REAL NOT NULL,
+        import_batch_id  INTEGER
       )
     ''');
 
