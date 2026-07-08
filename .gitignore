@@ -43,3 +43,12 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Dati locali sensibili
+*.db
+*.sqlite
+key.properties
+/android/key.jks
+/android/*.keystore
+*.xlsx
+*.csv
