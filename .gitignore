@@ -48,7 +48,7 @@ app.*.map.json
 *.db
 *.sqlite
 key.properties
-/android/key.jks
+/android/*.jks
 /android/*.keystore
 *.xlsx
 *.csv
