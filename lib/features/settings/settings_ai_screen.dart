@@ -150,7 +150,7 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
   }
 }
 
-// ── Provider dropdown (con stati abilitato/disabilitato) ──────
+// ── Provider dropdown (DropdownButtonFormField, tema app) ─────
 
 class _ProviderDropdown extends StatelessWidget {
   final List<AiProvider> available;
@@ -168,44 +168,50 @@ class _ProviderDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isActive = selected != null;
-    final color = isActive ? colorOf(selected!) : AppColors.textMuted;
+    final color = isActive ? colorOf(selected!) : AppColors.border;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isActive ? color : AppColors.border,
-          width: isActive ? 1.5 : 1,
+    return DropdownButtonFormField<AiProvider>(
+      // ignore: deprecated_member_use
+      value: selected,
+      isExpanded: true,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: AppColors.surfaceElevated,
+        hintText: 'Seleziona provider',
+        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color),
         ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<AiProvider>(
-          value: selected,
-          isExpanded: true,
-          dropdownColor: AppColors.surface,
-          icon: Icon(Icons.expand_more,
-              color: isActive ? color : AppColors.textMuted, size: 20),
-          hint: const Text('Seleziona provider',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
-          onChanged: onChanged,
-          selectedItemBuilder: (context) => available.map((p) =>
-              Text(p.name,
-                  style: TextStyle(
-                      color: colorOf(p),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14))).toList(),
-          items: available.map((p) => DropdownMenuItem<AiProvider>(
-            value: p,
-            child: Text(p.name,
-                style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14)),
-          )).toList(),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color, width: isActive ? 1.5 : 1),
         ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       ),
+      dropdownColor: AppColors.surfaceElevated,
+      icon: Icon(Icons.expand_more,
+          color: isActive ? color : AppColors.textMuted, size: 22),
+      onChanged: onChanged,
+      selectedItemBuilder: (context) => available.map((p) => Text(p.name,
+          style: TextStyle(
+              color: colorOf(p),
+              fontWeight: FontWeight.w600,
+              fontSize: 14),
+          overflow: TextOverflow.ellipsis)).toList(),
+      items: available.map((p) => DropdownMenuItem<AiProvider>(
+        value: p,
+        child: Text(p.name,
+            style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w500,
+                fontSize: 14),
+            overflow: TextOverflow.ellipsis),
+      )).toList(),
     );
   }
 }
@@ -228,72 +234,78 @@ class _ModelDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isActive = value != null;
+    final color = isActive ? accentColor : AppColors.border;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isActive ? accentColor : AppColors.border,
-          width: isActive ? 1.5 : 1,
+    return DropdownButtonFormField<AiModelDef>(
+      // ignore: deprecated_member_use
+      value: value,
+      isExpanded: true,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: AppColors.surfaceElevated,
+        hintText: 'Seleziona modello',
+        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color),
         ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<AiModelDef>(
-          value: value,
-          isExpanded: true,
-          dropdownColor: AppColors.surface,
-          icon: Icon(Icons.expand_more,
-              color: isActive ? accentColor : AppColors.textMuted, size: 20),
-          hint: const Text('Seleziona modello',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
-          onChanged: onChanged,
-          selectedItemBuilder: value == null
-              ? null
-              : (context) => items.map((m) => Text(m.label,
-                    style: TextStyle(
-                        color: accentColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14),
-                    overflow: TextOverflow.ellipsis)).toList(),
-          items: items.map((m) {
-            final tagColor = m.tag.contains('Consigliato')
-                ? AppColors.positive
-                : m.tag == 'Pro'
-                    ? accentColor
-                    : m.tag == 'Economico'
-                        ? AppColors.positive
-                        : AppColors.textMuted;
-            return DropdownMenuItem<AiModelDef>(
-              value: m,
-              child: Row(children: [
-                Expanded(
-                  child: Text(m.label,
-                      style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14),
-                      overflow: TextOverflow.ellipsis),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: tagColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(m.tag,
-                      style: TextStyle(
-                          color: tagColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700)),
-                ),
-              ]),
-            );
-          }).toList(),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color, width: isActive ? 1.5 : 1),
         ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       ),
+      dropdownColor: AppColors.surfaceElevated,
+      icon: Icon(Icons.expand_more,
+          color: isActive ? accentColor : AppColors.textMuted, size: 22),
+      onChanged: onChanged,
+      selectedItemBuilder: value == null
+          ? null
+          : (context) => items.map((m) => Text(m.label,
+                style: TextStyle(
+                    color: accentColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14),
+                overflow: TextOverflow.ellipsis)).toList(),
+      items: items.map((m) {
+        final tagColor = m.tag.contains('Consigliato')
+            ? AppColors.positive
+            : m.tag == 'Pro'
+                ? accentColor
+                : m.tag == 'Economico'
+                    ? AppColors.positive
+                    : AppColors.textMuted;
+        return DropdownMenuItem<AiModelDef>(
+          value: m,
+          child: Row(children: [
+            Expanded(
+              child: Text(m.label,
+                  style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14),
+                  overflow: TextOverflow.ellipsis),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: tagColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(m.tag,
+                  style: TextStyle(
+                      color: tagColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ]),
+        );
+      }).toList(),
     );
   }
 }

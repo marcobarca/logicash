@@ -302,43 +302,54 @@ class _ApiKeyFormState extends State<_ApiKeyForm> {
                 style: TextStyle(color: AppColors.textMuted, fontSize: 11,
                     fontWeight: FontWeight.w600, letterSpacing: 0.5)),
             const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.surfaceElevated,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isActive ? AppColors.primary : AppColors.border,
-                  width: isActive ? 1.5 : 1,
+            DropdownButtonFormField<String>(
+              // ignore: deprecated_member_use
+              value: _selectedProvider,
+              isExpanded: true,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: AppColors.surfaceElevated,
+                hintText: 'Seleziona provider',
+                hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                      color: isActive ? AppColors.primary : AppColors.border),
                 ),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedProvider,
-                  isExpanded: true,
-                  dropdownColor: AppColors.surface,
-                  hint: const Text('Seleziona provider',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
-                  icon: Icon(Icons.expand_more,
-                      color: isActive ? AppColors.primary : AppColors.textMuted, size: 20),
-                  onChanged: (v) => setState(() => _selectedProvider = v),
-                  selectedItemBuilder: (context) => _providers.map((p) =>
-                      Text(p,
-                          style: const TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14),
-                          overflow: TextOverflow.ellipsis)).toList(),
-                  items: _providers.map((p) => DropdownMenuItem(
-                    value: p,
-                    child: Text(p,
-                        style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 14)),
-                  )).toList(),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                      color: isActive ? AppColors.primary : AppColors.border,
+                      width: isActive ? 1.5 : 1),
                 ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      const BorderSide(color: AppColors.primary, width: 1.5),
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               ),
+              dropdownColor: AppColors.surfaceElevated,
+              icon: Icon(Icons.expand_more,
+                  color: isActive ? AppColors.primary : AppColors.textMuted,
+                  size: 22),
+              onChanged: (v) => setState(() => _selectedProvider = v),
+              selectedItemBuilder: (context) => _providers.map((p) => Text(p,
+                  style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14),
+                  overflow: TextOverflow.ellipsis)).toList(),
+              items: _providers.map((p) => DropdownMenuItem(
+                value: p,
+                child: Text(p,
+                    style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14),
+                    overflow: TextOverflow.ellipsis),
+              )).toList(),
             ),
 
             const SizedBox(height: 16),
