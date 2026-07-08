@@ -108,7 +108,7 @@ class FlexibleParser {
       if (cells.isEmpty) continue;
 
       final dateStr   = cells[p.dateColIndex] ?? '';
-      final descStr   = cells[p.descColIndex] ?? '';
+      final descStr   = p.descColIndex >= 0 ? (cells[p.descColIndex] ?? '') : 'Transazione';
       final amountStr = cells[p.amountColIndex] ?? '';
 
       if (dateStr.isEmpty || amountStr.isEmpty) continue;
@@ -157,7 +157,7 @@ class FlexibleParser {
         if (cols.length <= p.amountColIndex) continue;
 
         final dateStr   = _safeCol(cols, p.dateColIndex);
-        final descStr   = _safeCol(cols, p.descColIndex);
+        final descStr   = p.descColIndex >= 0 ? _safeCol(cols, p.descColIndex) : 'Transazione';
         final amountStr = _safeCol(cols, p.amountColIndex);
 
         if (dateStr.isEmpty || amountStr.isEmpty) continue;
@@ -244,7 +244,7 @@ class FlexibleParser {
     return result;
   }
 
-  static String _safeCol(List<String> cols, int i) => i < cols.length ? cols[i] : '';
+  static String _safeCol(List<String> cols, int i) => (i >= 0 && i < cols.length) ? cols[i] : '';
 
   static int _colLetterToIndex(String letters) {
     int result = 0;

@@ -60,15 +60,41 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     try {
       final map = jsonDecode(json) as Map<String, dynamic>;
       final fileExt = widget.filePath.split('.').last.toLowerCase();
+      final dataStartRow = (map['dataStartRow'] as num?)?.toInt() ?? 0;
+
+      int dateColIdx = (map['dateColIndex'] as num?)?.toInt() ?? -1;
+      String dateType = map['dateType'] as String? ?? 'string';
+
+      // Fallback: se l'AI non ha trovato la colonna data, cerco la prima colonna
+      // con valori numerici nell'intervallo dei seriali Excel (40000–50000).
+      if (dateColIdx < 0 && _preview.length > dataStartRow) {
+        final dataRows = _preview.skip(dataStartRow).take(5).toList();
+        outer:
+        for (int col = 0; col < 10; col++) {
+          int hits = 0;
+          for (final row in dataRows) {
+            if (col >= row.length) continue;
+            final n = double.tryParse(row[col]);
+            if (n != null && n >= 40000 && n <= 50000) hits++;
+          }
+          if (hits >= dataRows.length * 0.8) {
+            dateColIdx = col;
+            dateType = 'serial';
+            break outer;
+          }
+        }
+      }
+      if (dateColIdx < 0) dateColIdx = 0; // fallback assoluto
+
       final detected = ImportProfile(
         name: map['bankName'] as String? ?? 'Nuovo profilo',
         fileType: (map['fileType'] as String?) ?? fileExt,
-        dataStartRow: (map['dataStartRow'] as num?)?.toInt() ?? 0,
-        dateColIndex: (map['dateColIndex'] as num?)?.toInt() ?? 0,
-        descColIndex: (map['descColIndex'] as num?)?.toInt() ?? 1,
-        amountColIndex: (map['amountColIndex'] as num?)?.toInt() ?? 2,
+        dataStartRow: dataStartRow,
+        dateColIndex: dateColIdx,
+        descColIndex: (map['descColIndex'] as num?)?.toInt() ?? -1,
+        amountColIndex: (map['amountColIndex'] as num?)?.toInt() ?? -1,
         catColIndex: (map['catColIndex'] as num?)?.toInt() ?? -1,
-        dateType: map['dateType'] as String? ?? 'string',
+        dateType: dateType,
         dateFormat: map['dateFormat'] as String? ?? 'dd/MM/yyyy',
         decimalSep: map['decimalSep'] as String? ?? '.',
         negativeIsExpense: map['negativeIsExpense'] as bool? ?? true,

@@ -386,22 +386,29 @@ Dati finanziari reali dell'utente:
         .join('\n');
 
     const prompt = '''
-Sei un esperto nell\'analisi di file bancari. Analizza queste righe di anteprima e identifica la struttura.
+Sei un esperto nell\'analisi di file bancari. Analizza queste righe di anteprima e identifica la struttura del file.
 
 ANTEPRIMA FILE:
 {PREVIEW}
+
+REGOLE IMPORTANTI:
+1. SERIALI EXCEL: numeri interi o decimali nell\'intervallo 40000–50000 sono date seriali Excel (es. 46211 = 2026-07-08). Se vedi tali valori nella stessa colonna su ogni riga, quella è la colonna data e dateType DEVE essere "serial".
+2. COLONNE OBBLIGATORIE: dateColIndex e amountColIndex devono sempre essere un indice >= 0. Usa -1 SOLO per catColIndex (categoria) quando non è presente.
+3. DESCCOLINDEX: se non c\'è una colonna di testo descrittivo usa -1 (il sistema inserirà "Transazione" come placeholder).
+4. IMPORTI: la colonna amount contiene i valori monetari (positivi o negativi, spesso l\'ultima colonna).
+5. INTESTAZIONI: la riga 0 è spesso un\'intestazione o metadato; i dati iniziano dalla riga 1 o successiva.
 
 Rispondi SOLO con un JSON valido, senza markdown, senza spiegazioni:
 {
   "bankName": "nome banca rilevato o Unknown",
   "fileType": "xlsx" oppure "csv",
-  "dataStartRow": <numero riga 0-indexed da cui iniziano i dati veri (salta intestazioni)>,
-  "dateColIndex": <indice colonna 0-indexed della data>,
-  "descColIndex": <indice colonna 0-indexed della descrizione/causale>,
-  "amountColIndex": <indice colonna 0-indexed dell\'importo>,
-  "catColIndex": <indice colonna categoria o -1 se assente>,
-  "dateType": "serial" se è numero seriale Excel, altrimenti "string",
-  "dateFormat": "dd/MM/yyyy" o altro formato se dateType=string,
+  "dataStartRow": <numero riga 0-indexed da cui iniziano i dati (escluse intestazioni)>,
+  "dateColIndex": <indice colonna 0-indexed della data — OBBLIGATORIO >= 0>,
+  "descColIndex": <indice colonna 0-indexed della descrizione/causale, oppure -1 se assente>,
+  "amountColIndex": <indice colonna 0-indexed dell\'importo — OBBLIGATORIO >= 0>,
+  "catColIndex": <indice colonna categoria, oppure -1 se assente>,
+  "dateType": "serial" se la data è un numero seriale Excel (40000-50000), altrimenti "string",
+  "dateFormat": "dd/MM/yyyy" o altro formato ISO se dateType=string,
   "decimalSep": "." oppure ",",
   "negativeIsExpense": true se importi negativi = uscite, false altrimenti,
   "csvDelimiter": ";" oppure "," oppure "\\t",
