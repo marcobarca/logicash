@@ -84,46 +84,11 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                   ),
                 )
               else
-                Row(
-                  children: available.map((p) {
-                    final active = _activeProvider?.id == p.id;
-                    final color = _colorOf(p);
-                    return GestureDetector(
-                      onTap: () => setState(() =>
-                          _activeProvider = active ? null : p),
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 10),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 18, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: active
-                              ? color.withValues(alpha: 0.12)
-                              : AppColors.surfaceElevated,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: active ? color : AppColors.border,
-                            width: active ? 1.5 : 1,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            _ProviderCircle(provider: p, color: color, size: 44),
-                            const SizedBox(height: 8),
-                            Text(
-                              p.name,
-                              style: TextStyle(
-                                color: active ? color : AppColors.textSecondary,
-                                fontSize: 12,
-                                fontWeight: active
-                                    ? FontWeight.w700
-                                    : FontWeight.w400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                _ProviderDropdown(
+                  available: available,
+                  selected: _activeProvider,
+                  colorOf: _colorOf,
+                  onChanged: (p) => setState(() => _activeProvider = p),
                 ),
 
               const SizedBox(height: 28),
@@ -360,13 +325,80 @@ class _SlotSelectorState extends State<_SlotSelector> {
   };
 }
 
-// ── Provider circle ───────────────────────────────────────────
+// ── Provider dropdown ─────────────────────────────────────────
 
-class _ProviderCircle extends StatelessWidget {
+class _ProviderDropdown extends StatelessWidget {
+  final List<AiProvider> available;
+  final AiProvider? selected;
+  final Color Function(AiProvider) colorOf;
+  final ValueChanged<AiProvider?> onChanged;
+
+  const _ProviderDropdown({
+    required this.available,
+    required this.selected,
+    required this.colorOf,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected != null ? colorOf(selected!) : AppColors.textMuted;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: selected != null ? color : AppColors.border,
+          width: selected != null ? 1.5 : 1,
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<AiProvider>(
+          value: selected,
+          isExpanded: true,
+          hint: const Text('Seleziona provider',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
+          dropdownColor: AppColors.surface,
+          icon: Icon(Icons.expand_more, color: selected != null ? color : AppColors.textMuted),
+          onChanged: onChanged,
+          selectedItemBuilder: (context) => available.map((p) {
+            final c = colorOf(p);
+            return Row(children: [
+              _Avatar(provider: p, color: c, size: 28),
+              const SizedBox(width: 10),
+              Text(p.name,
+                  style: TextStyle(
+                      color: c, fontWeight: FontWeight.w600, fontSize: 14)),
+            ]);
+          }).toList(),
+          items: available.map((p) {
+            final c = colorOf(p);
+            return DropdownMenuItem<AiProvider>(
+              value: p,
+              child: Row(children: [
+                _Avatar(provider: p, color: c, size: 30),
+                const SizedBox(width: 12),
+                Text(p.name,
+                    style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14)),
+              ]),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
   final AiProvider provider;
   final Color color;
   final double size;
-  const _ProviderCircle({required this.provider, required this.color, required this.size});
+  const _Avatar({required this.provider, required this.color, required this.size});
 
   @override
   Widget build(BuildContext context) {
@@ -380,7 +412,7 @@ class _ProviderCircle extends StatelessWidget {
         child: Text(provider.initial,
             style: TextStyle(
                 color: color,
-                fontSize: size * 0.38,
+                fontSize: size * 0.4,
                 fontWeight: FontWeight.w800)),
       ),
     );
