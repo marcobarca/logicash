@@ -52,3 +52,5 @@ key.properties
 /android/*.keystore
 *.xlsx
 *.csv
+# Claude Code (non pushare)
+CLAUDE.md
