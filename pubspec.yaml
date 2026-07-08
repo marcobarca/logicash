@@ -1,0 +1,64 @@
+name: logicash
+description: "App finanze personali con AI Gemini"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Database
+  sqflite: ^2.4.2
+  path: ^1.9.1
+  path_provider: ^2.1.5
+
+  # Cifratura
+  encrypt: ^5.0.3
+  crypto: ^3.0.6
+  flutter_secure_storage: ^9.2.4
+
+  # Excel parsing (legge xlsx come ZIP, più robusto con file che contengono immagini)
+  archive: ^3.6.1
+
+  # File picker
+  file_picker: ^10.1.9
+
+  # Grafici
+  fl_chart: ^0.71.0
+
+  # AI
+  google_generative_ai: ^0.4.7
+
+  # UI
+  google_fonts: ^6.2.1
+  flutter_animate: ^4.5.2
+  percent_indicator: ^4.2.4
+  shimmer: ^3.0.0
+
+  # State management
+  provider: ^6.1.5
+
+  # Utils
+  intl: ^0.20.2
+  uuid: ^4.5.1
+  shared_preferences: ^2.5.3
+
+  # Aggiornamenti in-app
+  package_info_plus: ^8.1.1
+  dio: ^5.8.0
+  open_file: ^3.3.2
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
