@@ -42,7 +42,7 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
     return result;
   }
 
-  Color _colorOf(AiProvider p) => switch (p.id) {
+  static Color _colorOf(AiProvider p) => switch (p.id) {
     'google'    => const Color(0xFF4285F4),
     'openai'    => const Color(0xFF10A37F),
     'anthropic' => const Color(0xFFD4A843),
@@ -60,13 +60,9 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // ── Selezione provider ────────────────────────────────
-              const Padding(
-                padding: EdgeInsets.only(left: 4, bottom: 10),
-                child: Text('PROVIDER',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 11,
-                        fontWeight: FontWeight.w700, letterSpacing: 1.1)),
-              ),
+              // ── Provider ──────────────────────────────────────────
+              const _SectionLabel('PROVIDER'),
+              const SizedBox(height: 8),
 
               if (available.isEmpty)
                 LcCard(
@@ -84,47 +80,79 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
                   ),
                 )
               else
-                _ProviderDropdown(
-                  available: available,
-                  selected: _activeProvider,
-                  colorOf: _colorOf,
+                _StyledDropdown<AiProvider>(
+                  value: _activeProvider,
+                  hint: 'Seleziona provider',
+                  activeColor: _activeProvider != null ? _colorOf(_activeProvider!) : null,
+                  items: available,
+                  labelOf: (p) => p.name,
+                  leadingOf: (p) => _Avatar(provider: p, color: _colorOf(p), size: 26),
                   onChanged: (p) => setState(() => _activeProvider = p),
                 ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
 
-              // ── Slot modelli ──────────────────────────────────────
-              if (_activeProvider == null) ...[
-                if (available.isNotEmpty)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Text('Seleziona un provider per configurare i modelli.',
-                          style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-                    ),
-                  ),
-              ] else ...[
-                Padding(
-                  padding: const EdgeInsets.only(left: 4, bottom: 8),
-                  child: Text('MODELLI — ${_activeProvider!.name.toUpperCase()}',
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 11,
-                          fontWeight: FontWeight.w700, letterSpacing: 1.1)),
+              // ── Modelli per slot ──────────────────────────────────
+              const _SectionLabel('MODELLO PER FUNZIONE'),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.only(left: 2, bottom: 12),
+                child: Text(
+                  _activeProvider == null
+                      ? 'Seleziona prima un provider.'
+                      : 'Assegna un modello ${_activeProvider!.name} a ogni funzione.',
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 4, bottom: 12),
-                  child: Text(
-                    'Assegna modelli diversi per ottimizzare qualità e costo.',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+              ),
+
+              ...GeminiModelSlot.values.map((slot) {
+                final currentId = provider.gemini.getModelId(slot);
+                final currentModel = _activeProvider != null
+                    ? _activeProvider!.models.cast<AiModelDef?>().firstWhere(
+                        (m) => m!.id == currentId, orElse: () => null)
+                    : null;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 2, bottom: 6),
+                        child: Row(children: [
+                          Text(slot.label,
+                              style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13)),
+                          const SizedBox(width: 6),
+                          Text('· ${slot.description}',
+                              style: const TextStyle(
+                                  color: AppColors.textMuted, fontSize: 11)),
+                        ]),
+                      ),
+                      _StyledDropdown<AiModelDef>(
+                        value: currentModel,
+                        hint: 'Seleziona modello',
+                        enabled: _activeProvider != null,
+                        activeColor: _activeProvider != null
+                            ? _colorOf(_activeProvider!)
+                            : null,
+                        items: _activeProvider?.models ?? [],
+                        labelOf: (m) => m.label,
+                        trailingOf: (m) => Text(m.tag,
+                            style: const TextStyle(
+                                color: AppColors.textMuted, fontSize: 11)),
+                        onChanged: _activeProvider == null
+                            ? null
+                            : (m) {
+                                if (m != null) provider.setGeminiModel(slot, m.id);
+                              },
+                      ),
+                    ],
                   ),
-                ),
-                ...GeminiModelSlot.values.map((slot) => _SlotSelector(
-                  key: ValueKey('${slot.name}_${_activeProvider!.id}'),
-                  slot: slot,
-                  currentModelId: provider.gemini.getModelId(slot),
-                  activeProvider: _activeProvider!,
-                  onChanged: (id) => provider.setGeminiModel(slot, id),
-                )),
-              ],
+                );
+              }),
 
               const SizedBox(height: 20),
               AiCostWidget(gemini: provider.gemini),
@@ -137,261 +165,116 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
   }
 }
 
-// ── Selettore slot ────────────────────────────────────────────
+// ── Dropdown stilizzato ───────────────────────────────────────
 
-class _SlotSelector extends StatefulWidget {
-  final GeminiModelSlot slot;
-  final String currentModelId;
-  final AiProvider activeProvider;
-  final ValueChanged<String> onChanged;
+class _StyledDropdown<T> extends StatelessWidget {
+  final T? value;
+  final String hint;
+  final bool enabled;
+  final Color? activeColor;
+  final List<T> items;
+  final String Function(T) labelOf;
+  final Widget Function(T)? leadingOf;
+  final Widget Function(T)? trailingOf;
+  final ValueChanged<T?>? onChanged;
 
-  const _SlotSelector({
-    super.key,
-    required this.slot,
-    required this.currentModelId,
-    required this.activeProvider,
+  const _StyledDropdown({
+    required this.value,
+    required this.hint,
+    required this.items,
+    required this.labelOf,
     required this.onChanged,
+    this.enabled = true,
+    this.activeColor,
+    this.leadingOf,
+    this.trailingOf,
   });
 
   @override
-  State<_SlotSelector> createState() => _SlotSelectorState();
-}
-
-class _SlotSelectorState extends State<_SlotSelector> {
-  bool _expanded = false;
-
-  // Il modello corrente se appartiene al provider attivo, altrimenti null.
-  AiModelDef? get _activeModel {
-    final provider = providerOfModel(widget.currentModelId);
-    if (provider?.id == widget.activeProvider.id) {
-      return modelById(widget.currentModelId);
-    }
-    return null;
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final current = _activeModel;
-    final color = _colorOf(widget.activeProvider);
+    final color = activeColor ?? AppColors.textMuted;
+    final isActive = enabled && value != null;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Header ────────────────────────────────────────────
-          InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 8, height: 8,
-                    decoration: BoxDecoration(
-                      color: current != null ? color : AppColors.border,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(widget.slot.label,
-                            style: const TextStyle(color: AppColors.textPrimary,
-                                fontWeight: FontWeight.w600, fontSize: 13)),
-                        const SizedBox(height: 2),
-                        Text(widget.slot.description,
-                            style: const TextStyle(
-                                color: AppColors.textMuted, fontSize: 10)),
-                        const SizedBox(height: 3),
-                        Text(
-                          current?.label ?? 'Nessun modello selezionato',
-                          style: TextStyle(
-                            color: current != null
-                                ? color
-                                : AppColors.textMuted,
-                            fontSize: 12,
-                            fontWeight: current != null
-                                ? FontWeight.w500
-                                : FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(_expanded ? Icons.expand_less : Icons.expand_more,
-                      color: AppColors.textMuted, size: 20),
-                ],
-              ),
-            ),
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.45,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive ? color : AppColors.border,
+            width: isActive ? 1.5 : 1,
           ),
-
-          // ── Lista modelli ─────────────────────────────────────
-          if (_expanded) ...[
-            const Divider(height: 1, color: AppColors.border),
-            ...widget.activeProvider.models.map((m) {
-              final selected = widget.currentModelId == m.id;
-              final tagColor = m.tag.contains('Consigliato')
-                  ? AppColors.positive
-                  : m.tag == 'Pro'
-                      ? color
-                      : m.tag == 'Economico'
-                          ? AppColors.positive
-                          : AppColors.textMuted;
-
-              return InkWell(
-                onTap: () {
-                  widget.onChanged(m.id);
-                  setState(() => _expanded = false);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
-                  color: selected
-                      ? color.withValues(alpha: 0.08)
-                      : Colors.transparent,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(children: [
-                              Text(m.label,
-                                  style: TextStyle(
-                                      color: selected
-                                          ? color
-                                          : AppColors.textPrimary,
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 12)),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 5, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: tagColor.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(m.tag,
-                                    style: TextStyle(
-                                        color: tagColor,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w700)),
-                              ),
-                            ]),
-                            const SizedBox(height: 2),
-                            Row(children: [
-                              Text(m.description,
-                                  style: const TextStyle(
-                                      color: AppColors.textMuted,
-                                      fontSize: 10)),
-                              const Spacer(),
-                              Text(
-                                '\$${m.inputPricePerM}/M · \$${m.outputPricePerM}/M',
-                                style: const TextStyle(
-                                    color: AppColors.textMuted, fontSize: 9),
-                              ),
-                            ]),
-                          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<T>(
+            value: value,
+            isExpanded: true,
+            dropdownColor: AppColors.surface,
+            icon: Icon(Icons.expand_more,
+                color: isActive ? color : AppColors.textMuted, size: 20),
+            hint: Text(hint,
+                style: const TextStyle(
+                    color: AppColors.textMuted, fontSize: 14)),
+            onChanged: enabled ? onChanged : null,
+            selectedItemBuilder: value == null
+                ? null
+                : (context) => items.map((item) {
+                      return Row(children: [
+                        if (leadingOf != null) ...[
+                          leadingOf!(item),
+                          const SizedBox(width: 10),
+                        ],
+                        Expanded(
+                          child: Text(labelOf(item),
+                              style: TextStyle(
+                                  color: isActive ? color : AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14),
+                              overflow: TextOverflow.ellipsis),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      if (selected)
-                        Icon(Icons.check, color: color, size: 16),
-                    ],
+                      ]);
+                    }).toList(),
+            items: items.map((item) {
+              return DropdownMenuItem<T>(
+                value: item,
+                child: Row(children: [
+                  if (leadingOf != null) ...[
+                    leadingOf!(item),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    child: Text(labelOf(item),
+                        style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14),
+                        overflow: TextOverflow.ellipsis),
                   ),
-                ),
+                  if (trailingOf != null) trailingOf!(item),
+                ]),
               );
-            }),
-          ],
-        ],
+            }).toList(),
+          ),
+        ),
       ),
     );
   }
-
-  Color _colorOf(AiProvider p) => switch (p.id) {
-    'google'    => const Color(0xFF4285F4),
-    'openai'    => const Color(0xFF10A37F),
-    'anthropic' => const Color(0xFFD4A843),
-    _           => AppColors.primary,
-  };
 }
 
-// ── Provider dropdown ─────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────
 
-class _ProviderDropdown extends StatelessWidget {
-  final List<AiProvider> available;
-  final AiProvider? selected;
-  final Color Function(AiProvider) colorOf;
-  final ValueChanged<AiProvider?> onChanged;
-
-  const _ProviderDropdown({
-    required this.available,
-    required this.selected,
-    required this.colorOf,
-    required this.onChanged,
-  });
-
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
   @override
-  Widget build(BuildContext context) {
-    final color = selected != null ? colorOf(selected!) : AppColors.textMuted;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: selected != null ? color : AppColors.border,
-          width: selected != null ? 1.5 : 1,
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<AiProvider>(
-          value: selected,
-          isExpanded: true,
-          hint: const Text('Seleziona provider',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
-          dropdownColor: AppColors.surface,
-          icon: Icon(Icons.expand_more, color: selected != null ? color : AppColors.textMuted),
-          onChanged: onChanged,
-          selectedItemBuilder: (context) => available.map((p) {
-            final c = colorOf(p);
-            return Row(children: [
-              _Avatar(provider: p, color: c, size: 28),
-              const SizedBox(width: 10),
-              Text(p.name,
-                  style: TextStyle(
-                      color: c, fontWeight: FontWeight.w600, fontSize: 14)),
-            ]);
-          }).toList(),
-          items: available.map((p) {
-            final c = colorOf(p);
-            return DropdownMenuItem<AiProvider>(
-              value: p,
-              child: Row(children: [
-                _Avatar(provider: p, color: c, size: 30),
-                const SizedBox(width: 12),
-                Text(p.name,
-                    style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14)),
-              ]),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Text(text,
+      style: const TextStyle(
+          color: AppColors.textMuted,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.1));
 }
 
 class _Avatar extends StatelessWidget {
@@ -412,7 +295,7 @@ class _Avatar extends StatelessWidget {
         child: Text(provider.initial,
             style: TextStyle(
                 color: color,
-                fontSize: size * 0.4,
+                fontSize: size * 0.42,
                 fontWeight: FontWeight.w800)),
       ),
     );
