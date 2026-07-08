@@ -48,8 +48,9 @@ app.*.map.json
 *.db
 *.sqlite
 key.properties
-/android/*.jks
-/android/*.keystore
+*.jks
+*.keystore
+*_b64.txt
 *.xlsx
 *.csv
 # Claude Code (non pushare)
