@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_provider.dart';
 import '../../shared/theme/app_theme.dart';
-import '../../shared/widgets/lc_card.dart';
 import '../../core/gemini/gemini_service.dart';
 import '../../core/ai/ai_catalog.dart';
 import 'ai_cost_widget.dart';
@@ -21,27 +20,25 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final providers = _resolveProviders(context.read<AppProvider>());
-      final withKey = providers.where((e) => e.hasKey).toList();
-      if (withKey.length == 1) setState(() => _activeProvider = withKey.first.provider);
+      final available = _resolveAvailable(context.read<AppProvider>());
+      if (available.length == 1) setState(() => _activeProvider = available.first);
     });
   }
 
-  /// Restituisce tutti i provider con un flag che indica se la chiave è configurata.
-  List<({AiProvider provider, bool hasKey})> _resolveProviders(AppProvider provider) {
-    return kAiProviders.map((p) {
+  /// Solo i provider con chiave configurata.
+  List<AiProvider> _resolveAvailable(AppProvider provider) {
+    final result = <AiProvider>[];
+    for (final p in kAiProviders) {
       final hasKey = p.id == 'google'
           ? provider.gemini.isConfigured
           : provider.customApiKeys.any(
               (k) => k.name.toLowerCase().contains(p.id) ||
                      k.name.toLowerCase().contains(p.name.toLowerCase()),
             );
-      return (provider: p, hasKey: hasKey);
-    }).toList();
+      if (hasKey) result.add(p);
+    }
+    return result;
   }
-
-  bool _anyKeyConfigured(AppProvider provider) =>
-      _resolveProviders(provider).any((e) => e.hasKey);
 
   static Color _colorOf(AiProvider p) => switch (p.id) {
     'google'    => const Color(0xFF4285F4),
@@ -56,8 +53,7 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
       appBar: AppBar(title: const Text('Modelli AI')),
       body: Consumer<AppProvider>(
         builder: (context, provider, _) {
-          final providers = _resolveProviders(provider);
-          final anyKey = providers.any((e) => e.hasKey);
+          final available = _resolveAvailable(provider);
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -66,20 +62,20 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
               const _SectionLabel('PROVIDER'),
               const SizedBox(height: 8),
 
-              _ProviderDropdown(
-                providers: providers,
-                selected: _activeProvider,
-                colorOf: _colorOf,
-                onChanged: (p) => setState(() => _activeProvider = p),
-              ),
-
-              if (!anyKey)
+              if (available.isEmpty)
                 const Padding(
-                  padding: EdgeInsets.only(top: 8, left: 2),
+                  padding: EdgeInsets.only(bottom: 4),
                   child: Text(
-                    'Vai in Impostazioni → Chiavi AI per configurare un provider.',
+                    'Nessuna chiave AI configurata. Vai in Impostazioni → Chiavi AI.',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                   ),
+                )
+              else
+                _ProviderDropdown(
+                  available: available,
+                  selected: _activeProvider,
+                  colorOf: _colorOf,
+                  onChanged: (p) => setState(() => _activeProvider = p),
                 ),
 
               const SizedBox(height: 24),
@@ -157,13 +153,13 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
 // ── Provider dropdown (con stati abilitato/disabilitato) ──────
 
 class _ProviderDropdown extends StatelessWidget {
-  final List<({AiProvider provider, bool hasKey})> providers;
+  final List<AiProvider> available;
   final AiProvider? selected;
   final Color Function(AiProvider) colorOf;
   final ValueChanged<AiProvider?> onChanged;
 
   const _ProviderDropdown({
-    required this.providers,
+    required this.available,
     required this.selected,
     required this.colorOf,
     required this.onChanged,
@@ -171,8 +167,8 @@ class _ProviderDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected != null ? colorOf(selected!) : AppColors.textMuted;
     final isActive = selected != null;
+    final color = isActive ? colorOf(selected!) : AppColors.textMuted;
 
     return Container(
       decoration: BoxDecoration(
@@ -194,57 +190,20 @@ class _ProviderDropdown extends StatelessWidget {
           hint: const Text('Seleziona provider',
               style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
           onChanged: onChanged,
-          selectedItemBuilder: selected == null
-              ? null
-              : (context) => providers.map((e) {
-                    final c = colorOf(e.provider);
-                    return Row(children: [
-                      _Avatar(provider: e.provider, color: c, size: 26),
-                      const SizedBox(width: 10),
-                      Text(e.provider.name,
-                          style: TextStyle(
-                              color: c,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14)),
-                    ]);
-                  }).toList(),
-          items: providers.map((e) {
-            final c = colorOf(e.provider);
-            return DropdownMenuItem<AiProvider>(
-              value: e.hasKey ? e.provider : null,
-              enabled: e.hasKey,
-              child: Row(children: [
-                _Avatar(
-                  provider: e.provider,
-                  color: e.hasKey ? c : AppColors.textMuted,
-                  size: 28,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(e.provider.name,
-                          style: TextStyle(
-                              color: e.hasKey
-                                  ? AppColors.textPrimary
-                                  : AppColors.textMuted,
-                              fontWeight: FontWeight.w500,
-                              fontSize: 14)),
-                      if (!e.hasKey)
-                        const Text('Chiave non configurata',
-                            style: TextStyle(
-                                color: AppColors.textMuted, fontSize: 11)),
-                    ],
-                  ),
-                ),
-                if (e.hasKey)
-                  const Icon(Icons.check_circle_outline,
-                      color: AppColors.positive, size: 16),
-              ]),
-            );
-          }).toList(),
+          selectedItemBuilder: (context) => available.map((p) =>
+              Text(p.name,
+                  style: TextStyle(
+                      color: colorOf(p),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14))).toList(),
+          items: available.map((p) => DropdownMenuItem<AiProvider>(
+            value: p,
+            child: Text(p.name,
+                style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14)),
+          )).toList(),
         ),
       ),
     );
@@ -353,27 +312,3 @@ class _SectionLabel extends StatelessWidget {
           letterSpacing: 1.1));
 }
 
-class _Avatar extends StatelessWidget {
-  final AiProvider provider;
-  final Color color;
-  final double size;
-  const _Avatar({required this.provider, required this.color, required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size, height: size,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(size * 0.28),
-      ),
-      child: Center(
-        child: Text(provider.initial,
-            style: TextStyle(
-                color: color,
-                fontSize: size * 0.42,
-                fontWeight: FontWeight.w800)),
-      ),
-    );
-  }
-}
