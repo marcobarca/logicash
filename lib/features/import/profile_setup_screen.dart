@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/database/models/import_profile_model.dart';
@@ -29,7 +30,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   void initState() {
     super.initState();
-    _preview = FlexibleParser.readPreview(widget.filePath);
+    try {
+      _preview = FlexibleParser.readPreview(widget.filePath);
+    } catch (_) {
+      _preview = [];
+    }
     if (widget.existing != null) {
       _profile = widget.existing;
       _nameController.text = widget.existing!.name;
@@ -114,35 +119,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Table(
-                    defaultColumnWidth: const IntrinsicColumnWidth(),
-                    border: TableBorder.all(color: AppColors.border, width: 0.5),
-                    children: _preview.take(8).toList().asMap().entries.map((e) {
-                      final isDataStart = _profile != null && e.key == _profile!.dataStartRow;
-                      return TableRow(
-                        decoration: BoxDecoration(
-                          color: isDataStart ? AppColors.positive.withValues(alpha: 0.08) : (e.key % 2 == 0 ? AppColors.surfaceElevated : Colors.transparent),
-                        ),
-                        children: [
-                          // Numero riga
-                          TableCell(child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: Text('${e.key}', style: TextStyle(color: isDataStart ? AppColors.positive : AppColors.textMuted, fontSize: 9, fontWeight: FontWeight.w600)),
-                          )),
-                          ...e.value.take(8).map((cell) => TableCell(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                              child: Text(cell.length > 14 ? '${cell.substring(0,14)}…' : cell,
-                                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 10)),
-                            ),
-                          )),
-                        ],
-                      );
-                    }).toList(),
-                  ),
-                ),
+                if (_preview.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Impossibile leggere il file. Prova a spostarlo in una cartella accessibile.',
+                      style: TextStyle(color: AppColors.negative, fontSize: 12),
+                    ),
+                  )
+                else
+                  _PreviewTable(preview: _preview, profile: _profile),
                 if (_profile != null) ...[
                   const SizedBox(height: 8),
                   _legendRow(AppColors.positive, 'Riga ${_profile!.dataStartRow} = inizio dati'),
@@ -241,6 +227,65 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       Text(label, style: TextStyle(color: color, fontSize: 10)),
     ],
   );
+}
+
+// Tabella con righe normalizzate alla stessa larghezza per evitare crash in Table.
+class _PreviewTable extends StatelessWidget {
+  final List<List<String>> preview;
+  final ImportProfile? profile;
+  const _PreviewTable({required this.preview, required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = preview.take(8).toList();
+    // Calcola il numero di colonne massimo (cap a 8) — tutte le righe devono avere lo stesso count.
+    final maxDataCols = rows.isEmpty ? 0 : rows.map((r) => min(r.length, 8)).reduce(max);
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Table(
+        defaultColumnWidth: const IntrinsicColumnWidth(),
+        border: TableBorder.all(color: AppColors.border, width: 0.5),
+        children: rows.asMap().entries.map((e) {
+          final rowIdx = e.key;
+          final cells = e.value;
+          final isDataStart = profile != null && rowIdx == profile!.dataStartRow;
+          return TableRow(
+            decoration: BoxDecoration(
+              color: isDataStart
+                  ? AppColors.positive.withValues(alpha: 0.08)
+                  : (rowIdx % 2 == 0 ? AppColors.surfaceElevated : Colors.transparent),
+            ),
+            children: [
+              // Numero riga
+              TableCell(
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Text('$rowIdx',
+                      style: TextStyle(
+                          color: isDataStart ? AppColors.positive : AppColors.textMuted,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600)),
+                ),
+              ),
+              // Celle dati — padded alla stessa larghezza per tutte le righe
+              ...List.generate(maxDataCols, (col) {
+                final cell = col < cells.length ? cells[col] : '';
+                final display = cell.length > 14 ? '${cell.substring(0, 14)}…' : cell;
+                return TableCell(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: Text(display,
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 10)),
+                  ),
+                );
+              }),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
 }
 
 class _ProfileField extends StatelessWidget {

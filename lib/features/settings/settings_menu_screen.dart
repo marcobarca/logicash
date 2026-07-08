@@ -82,13 +82,23 @@ class _SettingsMenuScreenState extends State<SettingsMenuScreen> {
               // ── Intelligenza artificiale ───────────────────────
               _SectionLabel('Intelligenza artificiale'),
               _Item(
-                icon: Icons.auto_awesome_outlined,
+                icon: Icons.key_outlined,
                 color: AppColors.primary,
-                title: 'Assistente AI',
+                title: 'Chiavi AI',
                 subtitle: provider.gemini.isConfigured
-                    ? 'Gemini configurato'
-                    : 'Chiave non configurata',
-                badge: !provider.gemini.isConfigured,
+                    ? 'Google configurato${provider.customApiKeys.isNotEmpty ? ' · +${provider.customApiKeys.length} altri' : ''}'
+                    : provider.customApiKeys.isNotEmpty
+                        ? '${provider.customApiKeys.length} chiavi'
+                        : 'Nessuna chiave configurata',
+                badge: !provider.gemini.isConfigured && provider.customApiKeys.isEmpty,
+                onTap: () => _push(const SettingsApiKeysScreen()),
+              ),
+              const _Divider(),
+              _Item(
+                icon: Icons.auto_awesome_outlined,
+                color: const Color(0xFF9575CD),
+                title: 'Modelli AI',
+                subtitle: 'Scegli il modello per ogni funzione',
                 onTap: () => _push(const SettingsAiScreen()),
               ),
 
@@ -112,16 +122,6 @@ class _SettingsMenuScreenState extends State<SettingsMenuScreen> {
                     ? 'Nessuna importazione'
                     : '${provider.importBatches.length} file importati',
                 onTap: () => _push(const SettingsImportHistoryScreen()),
-              ),
-              const _Divider(),
-              _Item(
-                icon: Icons.key_outlined,
-                color: AppColors.textMuted,
-                title: 'Chiavi API esterne',
-                subtitle: provider.customApiKeys.isEmpty
-                    ? 'Nessuna chiave'
-                    : '${provider.customApiKeys.length} chiavi salvate',
-                onTap: () => _push(const SettingsApiKeysScreen()),
               ),
 
               // ── Supporto ──────────────────────────────────────

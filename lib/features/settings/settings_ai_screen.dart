@@ -7,32 +7,8 @@ import '../../core/gemini/gemini_service.dart';
 import '../../core/ai/ai_catalog.dart';
 import 'ai_cost_widget.dart';
 
-class SettingsAiScreen extends StatefulWidget {
+class SettingsAiScreen extends StatelessWidget {
   const SettingsAiScreen({super.key});
-  @override
-  State<SettingsAiScreen> createState() => _SettingsAiScreenState();
-}
-
-class _SettingsAiScreenState extends State<SettingsAiScreen> {
-  final _apiKeyCtrl = TextEditingController();
-  bool _showKey = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadKey();
-  }
-
-  Future<void> _loadKey() async {
-    final key = await context.read<AppProvider>().getGeminiApiKey();
-    if (key != null && mounted) _apiKeyCtrl.text = key;
-  }
-
-  @override
-  void dispose() {
-    _apiKeyCtrl.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,109 +21,45 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // ── Chiave API Google ─────────────────────────────────
-              LcCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        _ProviderAvatar(provider: kAiProviders[0]),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Chiave API Google',
-                                  style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 15)),
-                              Text('Ottieni la chiave su Google AI Studio',
-                                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                        _StatusBadge(active: provider.gemini.isConfigured),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: _apiKeyCtrl,
-                      obscureText: !_showKey,
-                      decoration: InputDecoration(
-                        hintText: 'AIza...',
-                        labelText: 'Chiave API',
-                        suffixIcon: IconButton(
-                          icon: Icon(_showKey ? Icons.visibility_off : Icons.visibility,
-                              color: AppColors.textMuted, size: 18),
-                          onPressed: () => setState(() => _showKey = !_showKey),
-                        ),
-                      ),
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              await provider.setGeminiApiKey(_apiKeyCtrl.text.trim());
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context) // ignore: use_build_context_synchronously
-                                  .showSnackBar(const SnackBar(content: Text('Chiave API salvata')));
-                            },
-                            child: const Text('Salva'),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.primary)),
-                            onPressed: () async {
-                              final messenger = ScaffoldMessenger.of(context);
-                              messenger.showSnackBar(const SnackBar(
-                                content: Row(children: [
-                                  SizedBox(width: 18, height: 18,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
-                                  SizedBox(width: 12),
-                                  Text('Test in corso...'),
-                                ]),
-                                duration: Duration(seconds: 10),
-                              ));
-                              final error = await provider.gemini.testConnection();
-                              if (!mounted) return;
-                              messenger.hideCurrentSnackBar();
-                              messenger.showSnackBar(SnackBar( // ignore: use_build_context_synchronously
-                                content: Text(error == null ? '✓ Connessione OK' : '✗ $error'),
-                                backgroundColor: error == null ? AppColors.positive : AppColors.negative,
-                              ));
-                            },
-                            child: const Text('Testa', style: TextStyle(color: AppColors.primary)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Altri provider ────────────────────────────────────
-              if (provider.customApiKeys.isNotEmpty) ...[
-                const SizedBox(height: 8),
+              // ── Info chiavi ───────────────────────────────────────
+              if (!provider.gemini.isConfigured && provider.customApiKeys.isEmpty)
                 LcCard(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline, color: AppColors.textMuted, size: 16),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          'Le chiavi API per OpenAI e Anthropic si configurano in Dati → Chiavi API esterne.',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      const Icon(Icons.info_outline, color: AppColors.warning, size: 18),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Nessuna chiave AI configurata',
+                                style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                            const SizedBox(height: 2),
+                            const Text('Configura una chiave in Impostazioni → Chiavi AI.',
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
+
+              if (provider.gemini.isConfigured || provider.customApiKeys.isNotEmpty)
+                LcCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle_outline, color: AppColors.positive, size: 16),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _providersLabel(provider),
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
               const SizedBox(height: 20),
 
@@ -167,12 +79,12 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
 
               if (availableProviders.isEmpty)
                 LcCard(
-                  child: Row(
-                    children: const [
+                  child: const Row(
+                    children: [
                       Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 18),
                       SizedBox(width: 10),
                       Expanded(
-                        child: Text('Configura almeno una chiave API per selezionare i modelli.',
+                        child: Text('Configura almeno una chiave AI per selezionare i modelli.',
                             style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                       ),
                     ],
@@ -196,7 +108,19 @@ class _SettingsAiScreenState extends State<SettingsAiScreen> {
     );
   }
 
-  /// Restituisce i provider per cui l'utente ha una API key configurata.
+  String _providersLabel(AppProvider provider) {
+    final names = <String>[];
+    if (provider.gemini.isConfigured) names.add('Google');
+    for (final p in kAiProviders.where((p) => p.id != 'google')) {
+      final hasKey = provider.customApiKeys.any(
+        (k) => k.name.toLowerCase().contains(p.id) ||
+               k.name.toLowerCase().contains(p.name.toLowerCase()),
+      );
+      if (hasKey) names.add(p.name);
+    }
+    return 'Chiavi attive: ${names.join(', ')}';
+  }
+
   List<AiProvider> _resolveAvailableProviders(AppProvider provider) {
     final result = <AiProvider>[];
     if (provider.gemini.isConfigured) {
@@ -275,7 +199,6 @@ class _SlotSelectorState extends State<_SlotSelector> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header collassato ─────────────────────────────────
           InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: () => setState(() => _expanded = !_expanded),
@@ -317,7 +240,6 @@ class _SlotSelectorState extends State<_SlotSelector> {
           if (_expanded) ...[
             const Divider(height: 1, color: AppColors.border),
 
-            // ── Selezione provider ────────────────────────────────
             if (widget.availableProviders.length > 1)
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
@@ -332,9 +254,7 @@ class _SlotSelectorState extends State<_SlotSelector> {
                         decoration: BoxDecoration(
                           color: sel ? AppColors.primary.withValues(alpha: 0.15) : AppColors.surface,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: sel ? AppColors.primary : AppColors.border,
-                          ),
+                          border: Border.all(color: sel ? AppColors.primary : AppColors.border),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -357,10 +277,9 @@ class _SlotSelectorState extends State<_SlotSelector> {
 
             const Divider(height: 1, color: AppColors.border),
 
-            // ── Lista modelli del provider selezionato ─────────────
             ..._selectedProvider.models.map((m) {
               final selected = widget.currentModelId == m.id;
-              final tagColor = m.tag.contains('★') ? AppColors.positive
+              final tagColor = m.tag.contains('Consigliato') ? AppColors.positive
                   : m.tag == 'Pro' ? AppColors.primary
                   : m.tag == 'Economico' ? AppColors.positive
                   : AppColors.textMuted;
@@ -401,13 +320,11 @@ class _SlotSelectorState extends State<_SlotSelector> {
                             Row(
                               children: [
                                 Text(m.description,
-                                    style: const TextStyle(
-                                        color: AppColors.textMuted, fontSize: 10)),
+                                    style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
                                 const Spacer(),
                                 Text(
                                   '\$${m.inputPricePerM}/M in · \$${m.outputPricePerM}/M out',
-                                  style: const TextStyle(
-                                      color: AppColors.textMuted, fontSize: 9),
+                                  style: const TextStyle(color: AppColors.textMuted, fontSize: 9),
                                 ),
                               ],
                             ),
@@ -456,32 +373,6 @@ class _ProviderAvatar extends StatelessWidget {
         child: Text(provider.initial,
             style: TextStyle(color: _color, fontSize: fontSize,
                 fontWeight: FontWeight.w800)),
-      ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  final bool active;
-  const _StatusBadge({required this.active});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: active
-            ? AppColors.positive.withValues(alpha: 0.15)
-            : AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        active ? 'Attivo' : 'Non configurato',
-        style: TextStyle(
-          color: active ? AppColors.positive : AppColors.textMuted,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }
