@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_provider.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../core/update/update_service.dart';
+import '../../core/update/update_dialog.dart';
 import 'settings_accounts_screen.dart';
 import 'settings_preferences_screen.dart';
 import 'settings_security_screen.dart';
@@ -19,6 +21,7 @@ class SettingsMenuScreen extends StatefulWidget {
 
 class _SettingsMenuScreenState extends State<SettingsMenuScreen> {
   bool _pinEnabled = false;
+  bool _checkingUpdate = false;
 
   @override
   void initState() {
@@ -34,6 +37,28 @@ class _SettingsMenuScreenState extends State<SettingsMenuScreen> {
   void _push(Widget screen, {bool reloadPin = false}) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen))
         .then((_) { if (reloadPin) _loadPin(); });
+  }
+
+  Future<void> _checkForUpdate() async {
+    setState(() => _checkingUpdate = true);
+    final info = await UpdateService.checkForUpdate();
+    if (!mounted) return;
+    setState(() => _checkingUpdate = false);
+    if (info != null) {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: AppColors.surface,
+        isScrollControlled: true,
+        useSafeArea: true,
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        builder: (_) => UpdateDialog(info: info),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sei già all\'ultima versione')),
+      );
+    }
   }
 
   @override
@@ -132,6 +157,16 @@ class _SettingsMenuScreenState extends State<SettingsMenuScreen> {
                 title: 'Guida all\'app',
                 subtitle: 'Scopri tutte le funzionalità',
                 onTap: () => _push(const SettingsHelpScreen()),
+              ),
+              const _Divider(),
+              _Item(
+                icon: Icons.system_update_outlined,
+                color: AppColors.primary,
+                title: 'Controlla aggiornamenti',
+                subtitle: _checkingUpdate
+                    ? 'Verifica in corso…'
+                    : 'Controlla se è disponibile una nuova versione',
+                onTap: _checkingUpdate ? () {} : _checkForUpdate,
               ),
 
               // ── Footer ────────────────────────────────────────

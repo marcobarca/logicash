@@ -70,16 +70,18 @@ class FlexibleParser {
   static List<List<String>> _parseSheetRaw(String xml, List<String> ss, int maxRows) {
     final rows = <List<String>>[];
     final rowRe  = RegExp(r'<row r="(\d+)"[^>]*>(.*?)</row>', dotAll: true);
-    final cellRe = RegExp(r'<c r="([A-Z]+)\d+"(?:\s+t="([^"]*)")?[^>]*>(?:<v>(.*?)</v>)?', dotAll: true);
+    final cellRe = RegExp(r'<c r="([A-Z]+)\d+"([^>]*)>(?:<v>(.*?)</v>)?', dotAll: true);
 
     for (final rowMatch in rowRe.allMatches(xml)) {
       if (rows.length >= maxRows) break;
       final cells = <int, String>{};
       for (final c in cellRe.allMatches(rowMatch.group(2)!)) {
         final col = _colLetterToIndex(c.group(1)!);
-        final type = c.group(2) ?? '';
+        final attrs = c.group(2) ?? '';
         final val  = c.group(3) ?? '';
-        cells[col] = type == 's' ? (int.tryParse(val) != null ? ss[int.parse(val)] : val) : val;
+        cells[col] = attrs.contains('t="s"')
+            ? (int.tryParse(val) != null ? ss[int.parse(val)] : val)
+            : val;
       }
       if (cells.isEmpty) continue;
       final maxCol = cells.keys.reduce((a, b) => a > b ? a : b);
@@ -92,7 +94,7 @@ class FlexibleParser {
   static List<TransactionModel> _buildTransactions(String xml, List<String> ss, ImportProfile p) {
     final result = <TransactionModel>[];
     final rowRe  = RegExp(r'<row r="(\d+)"[^>]*>(.*?)</row>', dotAll: true);
-    final cellRe = RegExp(r'<c r="([A-Z]+)(\d+)"(?:\s+t="([^"]*)")?[^>]*>(?:<v>(.*?)</v>)?', dotAll: true);
+    final cellRe = RegExp(r'<c r="([A-Z]+)\d+"([^>]*)>(?:<v>(.*?)</v>)?', dotAll: true);
 
     for (final rowMatch in rowRe.allMatches(xml)) {
       final rowIdx = int.parse(rowMatch.group(1)!) - 1; // 0-indexed
@@ -101,9 +103,11 @@ class FlexibleParser {
       final cells = <int, String>{};
       for (final c in cellRe.allMatches(rowMatch.group(2)!)) {
         final col  = _colLetterToIndex(c.group(1)!);
-        final type = c.group(3) ?? '';
-        final val  = c.group(4) ?? '';
-        cells[col] = type == 's' ? (int.tryParse(val) != null ? ss[int.parse(val)] : val) : val;
+        final attrs = c.group(2) ?? '';
+        final val  = c.group(3) ?? '';
+        cells[col] = attrs.contains('t="s"')
+            ? (int.tryParse(val) != null ? ss[int.parse(val)] : val)
+            : val;
       }
       if (cells.isEmpty) continue;
 
