@@ -367,15 +367,14 @@ class AppProvider extends ChangeNotifier {
     return score.round().clamp(0, 100);
   }
 
-  // ── Proiezione fine mese ──────────────────────────────────────
+  // ── Periodo fiscale ───────────────────────────────────────────
 
-  double projectEndOfMonth() {
-    if (_currentMonthlySummary == null) return 0;
-
+  /// Calcola inizio, fine e avanzamento del periodo fiscale corrente
+  /// (mese solare o mese fiscale con giorno di inizio personalizzato).
+  ({DateTime start, DateTime end, int daysPassed, int daysInPeriod}) fiscalPeriodProgress() {
     final now = DateTime.now();
     final startDay = _fiscalMonthStartDay <= 1 ? 1 : _fiscalMonthStartDay;
 
-    // Calcola inizio e fine del periodo fiscale corrente
     final DateTime fiscalStart;
     final DateTime fiscalEnd;
 
@@ -394,7 +393,19 @@ class AppProvider extends ChangeNotifier {
     }
 
     final daysInPeriod = fiscalEnd.difference(fiscalStart).inDays + 1;
-    final daysPassed   = now.difference(fiscalStart).inDays + 1;
+    final daysPassed   = (now.difference(fiscalStart).inDays + 1).clamp(0, daysInPeriod);
+
+    return (start: fiscalStart, end: fiscalEnd, daysPassed: daysPassed, daysInPeriod: daysInPeriod);
+  }
+
+  // ── Proiezione fine mese ──────────────────────────────────────
+
+  double projectEndOfMonth() {
+    if (_currentMonthlySummary == null) return 0;
+
+    final period = fiscalPeriodProgress();
+    final daysPassed = period.daysPassed;
+    final daysInPeriod = period.daysInPeriod;
     final daysRemaining = (daysInPeriod - daysPassed).clamp(0, daysInPeriod);
 
     if (daysPassed <= 0) return 0;

@@ -9,6 +9,8 @@ import 'widgets/month_summary_widget.dart';
 import 'widgets/projection_widget.dart';
 import 'widgets/ai_insights_widget.dart';
 import 'widgets/quick_stats_widget.dart';
+import 'widgets/net_worth_widget.dart';
+import 'widgets/fiscal_period_widget.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -33,6 +35,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         builder: (context, provider, _) {
           final hasData = provider.availableMonths.isNotEmpty;
 
+          final period = provider.fiscalPeriodProgress();
+
           return RefreshIndicator(
             color: AppColors.primary,
             backgroundColor: AppColors.surface,
@@ -40,6 +44,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: CustomScrollView(
               slivers: [
                 _buildAppBar(context, provider),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      const SizedBox(height: 8),
+                      NetWorthWidget(
+                        totalBalance: provider.totalBalance,
+                        avgMonthlySavings: provider.avgMonthlySavings,
+                      ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1),
+                      const SizedBox(height: 16),
+                      FiscalPeriodWidget(
+                        start: period.start,
+                        end: period.end,
+                        daysPassed: period.daysPassed,
+                        daysInPeriod: period.daysInPeriod,
+                      ).animate().fadeIn(duration: 400.ms, delay: 50.ms).slideY(begin: 0.1),
+                      const SizedBox(height: 16),
+                    ]),
+                  ),
+                ),
                 if (!hasData)
                   SliverFillRemaining(child: _buildEmptyState(context))
                 else
@@ -47,12 +71,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
-                        const SizedBox(height: 8),
                         HealthScoreWidget(score: provider.computeHealthScore())
-                            .animate().fadeIn(duration: 400.ms).slideY(begin: 0.1),
+                            .animate().fadeIn(duration: 400.ms, delay: 100.ms).slideY(begin: 0.1),
                         const SizedBox(height: 16),
                         MonthSummaryWidget(summary: provider.currentMonthlySummary)
-                            .animate().fadeIn(duration: 400.ms, delay: 100.ms).slideY(begin: 0.1),
+                            .animate().fadeIn(duration: 400.ms, delay: 150.ms).slideY(begin: 0.1),
                         const SizedBox(height: 16),
                         ProjectionWidget(projection: provider.projectEndOfMonth())
                             .animate().fadeIn(duration: 400.ms, delay: 200.ms).slideY(begin: 0.1),
