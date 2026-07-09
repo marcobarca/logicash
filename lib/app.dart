@@ -10,6 +10,7 @@ import 'features/transactions/transactions_screen.dart';
 import 'features/chat/chat_screen.dart';
 import 'features/settings/settings_menu_screen.dart';
 import 'features/auth/pin_screen.dart';
+import 'features/onboarding/onboarding_screen.dart';
 import 'core/update/update_service.dart';
 import 'core/update/update_dialog.dart';
 
@@ -24,7 +25,7 @@ class LogicashApp extends StatelessWidget {
         title: 'Logicash',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark,
-        home: const _AppGate(),
+        home: const _StartupGate(),
         routes: {
           '/home': (_) => const MainShell(),
           '/transactions': (_) => const TransactionsScreen(),
@@ -33,6 +34,41 @@ class LogicashApp extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+class _StartupGate extends StatefulWidget {
+  const _StartupGate();
+
+  @override
+  State<_StartupGate> createState() => _StartupGateState();
+}
+
+class _StartupGateState extends State<_StartupGate> {
+  bool? _onboardingComplete;
+
+  @override
+  void initState() {
+    super.initState();
+    OnboardingScreen.isComplete().then((done) {
+      if (mounted) setState(() => _onboardingComplete = done);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_onboardingComplete == null) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+    }
+    if (!_onboardingComplete!) {
+      return OnboardingScreen(
+        onDone: () => setState(() => _onboardingComplete = true),
+      );
+    }
+    return const _AppGate();
   }
 }
 
